@@ -1,6 +1,7 @@
 import os
-from flask import Flask, render_template, redirect, url_for, flash, abort
-from flask_bootstrap import Bootstrap5
+import smtplib
+from flask import Flask, render_template, redirect, url_for, flash, abort, request
+from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
 from datetime import date
 from functools import wraps
@@ -11,15 +12,18 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, cur
 from forms import LoginForm, RegisterForm, CreatePostForm, CommentForm
 from flask_gravatar import Gravatar
 
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY")
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 ckeditor = CKEditor(app)
-Bootstrap5(app)
+Bootstrap(app)
 gravatar = Gravatar(app)
 
 # CONNECT TO DB
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL",  "sqlite:///blog.db")
+uri = os.getenv("DATABASE_URL", "sqlite:///blog.db")
+if uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -75,7 +79,26 @@ def admin_only(f):
         if current_user.id != 1:
             return abort(403)
         return f(*args, **kwargs)
+
     return decorated_function
+
+
+# SEND MAIL FUNCTION
+sender_email = os.getenv("SENDER_EMAIL")
+sender_password = os.getenv("SENDER_PASSWORD")
+recipient_email = os.getenv("RECIPIENT_EMAIL")
+
+
+def send_message(user_name, user_email, user_phone_number, user_message):
+    with smtplib.SMTP("smtp.gmail.com") as connection:
+        connection.starttls()
+        connection.login(user=sender_email, password=sender_password)
+        connection.sendmail(
+            from_addr=sender_email,
+            to_addrs=recipient_email,
+            msg=f"Subject:New message\n\n"
+                f"Name:{user_name}\nEmail:{user_email}\nPhone:{user_phone_number}\nMessage{user_message}"
+        )
 
 
 # ROUTES
@@ -102,7 +125,7 @@ def register():
         login_user(new_user)
         return redirect(url_for("get_all_posts"))
 
-    return render_template("register.html", form=form, current_user=current_user)
+    return render_template("register.html", form=form)
 
 
 @app.route('/login', methods=["GET", "POST"])
@@ -123,7 +146,7 @@ def login():
         else:
             login_user(user)
             return redirect(url_for('get_all_posts'))
-    return render_template("login.html", form=form, current_user=current_user)
+    return render_template("login.html", form=form)
 
 
 @app.route('/logout')
@@ -143,11 +166,7 @@ def show_post(post_id):
             flash("You need to login or register to comment.")
             return redirect(url_for("login"))
 
-        new_comment = Comment(
-            text=form.comment_text.data,
-            comment_author=current_user,
-            parent_post=requested_post
-        )
+        new_comment = Comment(text=form.comment_text.data, comment_author=current_user, parent_post=requested_post)
         db.session.add(new_comment)
         db.session.commit()
 
@@ -156,12 +175,17 @@ def show_post(post_id):
 
 @app.route("/about")
 def about():
-    return render_template("about.html", current_user=current_user)
+    return render_template("about.html")
 
 
-@app.route("/contact")
+@app.route("/contact", methods=["GET", "POST"])
 def contact():
-    return render_template("contact.html", current_user=current_user)
+    if request.method == "POST":
+        data = request.form
+        name, email, phone_number, message = data["name"], data["email"], data["phone"], data["message"]
+        send_message(name, email, phone_number, message)
+        return render_template("contact.html", msg_sent=True)
+    return render_template("contact.html", msg_sent=False)
 
 
 @app.route("/new-post", methods=["GET", "POST"])
@@ -215,5 +239,5 @@ def delete_post(post_id):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
