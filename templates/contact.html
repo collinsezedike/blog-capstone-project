@@ -9,10 +9,13 @@
           <div class="page-heading">
             {% if msg_sent %}
             <h1>Message sent successfully</h1>
+            {% elif msg_sent == "Err" %}
+            <h1>Something went wrong</h1>
+            <span class="subheading">It's not your fault. I'm working on it.</span>
             {% else %}
             <h1>Contact Me</h1>
-            {% endif %}
             <span class="subheading">Have questions? I have answers.</span>
+            {% endif %}
           </div>
         </div>
       </div>
