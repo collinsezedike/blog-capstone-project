@@ -7,11 +7,11 @@
       <div class="row">
         <div class="col-lg-8 col-md-10 mx-auto">
           <div class="page-heading">
-            {% if msg_sent %}
-            <h1>Message sent successfully</h1>
-            {% elif msg_sent == "Err" %}
+            {% if msg_sent == "Err" %}
             <h1>Something went wrong</h1>
             <span class="subheading">It's not your fault. I'm working on it.</span>
+            {% elif msg_sent %}
+            <h1>Message sent successfully</h1>
             {% else %}
             <h1>Contact Me</h1>
             <span class="subheading">Have questions? I have answers.</span>
