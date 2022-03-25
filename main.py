@@ -1,7 +1,7 @@
 import os
 import smtplib
 from flask import Flask, render_template, redirect, url_for, flash, abort, request
-from flask_bootstrap import Bootstrap
+from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
 from datetime import date
 from functools import wraps
@@ -15,7 +15,7 @@ from flask_gravatar import Gravatar
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 ckeditor = CKEditor(app)
-Bootstrap(app)
+Bootstrap5(app)
 gravatar = Gravatar(app)
 
 # CONNECT TO DB
@@ -187,7 +187,9 @@ def contact():
             send_message(name, email, phone_number, message)
         except Exception as err:
             print(err)
-        return render_template("contact.html", msg_sent=True)
+            return render_template("contact.html", msg_sent="Err")
+        else:
+            return render_template("contact.html", msg_sent=True)
     return render_template("contact.html", msg_sent=False)
 
 
